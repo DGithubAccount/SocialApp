@@ -7,11 +7,40 @@ import {
   GoogleSigninButton,
   statusCodes,
 } from '@react-native-community/google-signin';
-import {LoginButton, AccessToken} from 'react-native-fbsdk';
+import {
+  LoginButton,
+  AccessToken,
+  GraphRequest,
+  GraphRequestManager,
+} from 'react-native-fbsdk';
 class App extends Component {
+  // state = {userInfo:{}}
   constructor(props) {
     super(props);
   }
+  getInfoFromToken = token => {
+    const PROFILE_REQUEST_PARAMS = {
+      fields: {
+        string: 'id, name, first_name, last_name',
+      },
+    };
+    const profileRequest = new GraphRequest(
+      '/me',
+      {
+        token,
+        parameters: PROFILE_REQUEST_PARAMS,
+      },
+      (error, result) => {
+        if (error) {
+          console.log('FBError', error);
+        } else {
+          this.setState({userInfo: result});
+          console.log('FBResult -- ', result);
+        }
+      },
+    );
+    new GraphRequestManager.addRequest(profileRequest).start();
+  };
   componentDidMount = () => {
     GoogleSignin.configure({
       webClientId:
