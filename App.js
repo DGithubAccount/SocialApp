@@ -9,43 +9,60 @@ import {
 } from '@react-native-community/google-signin';
 import {
   LoginButton,
+  LoginManager,
   AccessToken,
   GraphRequest,
   GraphRequestManager,
 } from 'react-native-fbsdk';
 class App extends Component {
-  // state = {userInfo:{}}
+  state = {
+    myInformation: {},
+    token: '',
+  };
   constructor(props) {
     super(props);
   }
-  getInfoFromToken = token => {
-    const PROFILE_REQUEST_PARAMS = {
+  GetInformationFromToken = accessToken => {
+    const parameters = {
       fields: {
-        string: 'id, name, first_name, last_name',
+        string: 'id, first_name, quotes, email, last_name',
       },
     };
-    const profileRequest = new GraphRequest(
+    const myProfileRequest = new GraphRequest(
       '/me',
-      {
-        token,
-        parameters: PROFILE_REQUEST_PARAMS,
-      },
-      (error, result) => {
+      {accessToken, parameters: parameters},
+      (error, myProfileInfoResult) => {
         if (error) {
-          console.log('FBError', error);
+          console.log('login info has error: ' + error);
         } else {
-          this.setState({userInfo: result});
-          console.log('FBResult -- ', result);
+          this.setState({myInformation: myProfileInfoResult});
+          console.log('result --- :', myProfileInfoResult);
         }
       },
     );
-    new GraphRequestManager.addRequest(profileRequest).start();
+    new GraphRequestManager().addRequest(myProfileRequest).start();
   };
   componentDidMount = () => {
     GoogleSignin.configure({
       webClientId:
         '557005292072-sej3ht23gpaatukd84fso6ikdpo7h6bm.apps.googleusercontent.com', // client ID of type WEB for your server (needed to verify user ID and offline access)
     });
+  };
+
+  logOut = access_token => {
+    let logOut = new GraphRequest(
+      'me/permissions/',
+      {accessToken: access_token, httpMethod: 'DELETE'},
+      (error, result) => {
+        console.log('LogOut Result---->>>', result);
+        if (error) {
+          console.log('Error fetching data: ' + error.toString());
+        } else {
+          LoginManager.logOut();
+        }
+      },
+    );
+    new GraphRequestManager().addRequest(logOut).start();
   };
 
   signIn = async () => {
@@ -82,20 +99,25 @@ class App extends Component {
           // disabled={this.state.isSigninInProgress}
         />
         <LoginButton
+          permissions={['email']}
+          readPermissions={['public_profile', 'email']}
           onLoginFinished={(error, result) => {
             if (error) {
               console.log('login has error: ' + result.error);
             } else if (result.isCancelled) {
               console.log('login is cancelled.');
             } else {
-              AccessToken.getCurrentAccessToken().then(data => {
-                console.log(data.accessToken.toString());
+              AccessToken.getCurrentAccessToken().then(myData => {
+                const accessToken = myData.accessToken.toString();
+                this.setState({token: accessToken});
+                this.GetInformationFromToken(accessToken);
               });
             }
           }}
-          onLogoutFinished={() => console.log('logout.')}
+          onLogoutFinished={() => {
+            this.logOut(this.state.token);
+          }}
         />
-        <Text> Not SignedIn</Text>
       </View>
     );
   }
